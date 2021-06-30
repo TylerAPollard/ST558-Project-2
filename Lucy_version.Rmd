@@ -1,0 +1,46 @@
+---
+title: "ST558 - Project 2"
+author: "Tyler Pollard & Lucy Yin"
+output: 
+ html_document:
+   toc: true
+   toc_depth: 3
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+# Required Packages
+```{r}
+library(tidyverse)
+```
+
+# Introduction (lucy)
+  
+  
+# Data (either)
+```{r}
+hour.data <- read_csv("data/hour.csv") %>% as_tibble()
+day.data <- read_csv("data/day.csv") %>% as_tibble()
+```
+
+# Summarization (both)
+
+  
+# Modeling
+## Linear Regression Model
+### What is Linear Regression Model (tyler)
+  
+### Linear Regression Model (tyler)
+
+### Linear Regression Model (lucy)
+  
+  
+## Ensemble Tree Model
+### Random Forest Model (tyler)
+
+### Boosted Tree Model (lucy)
+  
+  
+  
+# Comparison (either)
