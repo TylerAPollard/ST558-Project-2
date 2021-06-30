@@ -18,10 +18,52 @@ library(tidyverse)
 # Introduction (lucy)
   
   
-# Data (either)
-```{r}
+# Data (lucy)
+```{r data - read in}
+# read in data
 hour.data <- read_csv("data/hour.csv") %>% as_tibble()
 day.data <- read_csv("data/day.csv") %>% as_tibble()
+```
+```{r data - change type}
+# correct the variaable types
+hour.data$season <- factor(hour.data$season)
+hour.data$yr <- factor(hour.data$yr)
+hour.data$mnth <- factor(hour.data$mnth)
+hour.data$hr <- factor(hour.data$hr)
+hour.data$holiday <- factor(hour.data$holiday)
+hour.data$weekday <- factor(hour.data$weekday)
+hour.data$workingday <- factor(hour.data$workingday)
+hour.data$weathersit <- factor(hour.data$weathersit)
+
+day.data$season <- factor(day.data$season)
+day.data$yr <- factor(day.data$yr)
+day.data$mnth <- factor(day.data$mnth)
+day.data$holiday <- factor(day.data$holiday)
+day.data$weekday <- factor(day.data$weekday)
+day.data$workingday <- factor(day.data$workingday)
+day.data$weathersit <- factor(day.data$weathersit)
+```
+```{r data - create total data}
+# add in a new variable before merging
+hour.data <- mutate(hour.data, type = "hour")
+day.data <- mutate(day.data, type = "day", hr = NA) %>% select(instant, dteday, season, yr, mnth, hr, everything())
+
+# merge to create complete list of hour/day data
+total.data <- rbind(hour.data, day.data)
+```
+```{r data - filter parameter}
+# filter out to one specific day of the week
+hour.data <- hour.data %>% filter(weekday == 1)
+day.data <- day.data %>% filter(weekday == 1)
+total.data <- total.data %>% filter(weekday == 1)
+```
+```{r data - split training/test}
+# splitting data into training & test sets
+set.seed(7)
+train <- sample(1:nrow(hour.data), size = nrow(hour.data)*0.7)
+test <- dplyr::setdiff(1:nrow(hour.data), train)
+training.data <- hour.data[train, ]
+test.data <- hour.data[test, ]
 ```
 
 # Summarization (both)
