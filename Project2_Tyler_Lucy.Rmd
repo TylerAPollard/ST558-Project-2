@@ -8,15 +8,14 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+knitr::opts_chunk$set(echo = TRUE, eval = TRUE, message = FALSE, warning = FALSE)
 ```
 # Required Packages
-```{r}
+```{r packages}
 library(tidyverse)
 ```
 
 # Introduction (lucy)
-  
   
 # Data (lucy)
 ```{r data - read in}
