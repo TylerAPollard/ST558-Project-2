@@ -13,6 +13,10 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 # Required Packages
 ```{r}
 library(tidyverse)
+library(dplyr)
+library(knitr)
+library(ggplot2)
+library(caret)
 ```
 
 # Introduction (lucy)
@@ -67,7 +71,23 @@ test.data <- hour.data[test, ]
 ```
 
 # Summarization (both)
+## Contingency Tables
+### Weather Situation
+```{r contigency table - weathersit}
+#levels(day.data$weathersit) <- list("1" = "1", "2" = "2", "3" = "3", "4" = "4")
+levels(day.data$weathersit) <- list(
+  "Clear, Few clouds, Partly cloudy, Partly cloudy" = "1",
+  "Mist + Cloudy, Mist + Broken clouds, Mist + Few clouds, Mist" = "2",
+  "Light Snow, Light Rain + Thunderstorm + Scattered clouds, Light Rain + Scattered clouds" = "3",
+  "Heavy Rain + Ice Pallets + Thunderstorm + Mist, Snow + Fog" = "4")
+kable(t(table(day.data$weathersit)))
+```
 
+## Summary Tables
+### Adjusted Temperature
+```{r summary table - atemp}
+
+```
   
 # Modeling
 ## Linear Regression Model
@@ -77,12 +97,10 @@ test.data <- hour.data[test, ]
 
 ### Linear Regression Model (lucy)
   
-  
 ## Ensemble Tree Model
+
 ### Random Forest Model (tyler)
 
 ### Boosted Tree Model (lucy)
-  
-  
   
 # Comparison (either)
