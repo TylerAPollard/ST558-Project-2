@@ -6,7 +6,7 @@ output:
    toc: true
    toc_depth: 3
 params: 
-      weekday: 1
+      weekday: monday
 ---
 
 ```{r setup, include=FALSE}
@@ -29,19 +29,25 @@ day.data <- read_csv("data/day.csv") %>% as_tibble()
 ```{r data - change type}
 # correct the variaable types
 hour.data$season <- factor(hour.data$season)
+levels(hour.data$season) <- list(winter = 1, spring = 2, summer = 3, fall = 4)
 hour.data$yr <- factor(hour.data$yr)
+levels(hour.data$yr) <- list("2011" = 0, "2012" = 1)
 hour.data$mnth <- factor(hour.data$mnth)
 hour.data$hr <- factor(hour.data$hr)
 hour.data$holiday <- factor(hour.data$holiday)
 hour.data$weekday <- factor(hour.data$weekday)
+levels(hour.data$weekday) <- list(monday = 1, tuesday = 2, wednesday = 3, thursday = 4, friday = 5, saturday = 6, sunday = 0)
 hour.data$workingday <- factor(hour.data$workingday)
 hour.data$weathersit <- factor(hour.data$weathersit)
 
 day.data$season <- factor(day.data$season)
+levels(day.data$season) <- list(winter = 1, spring = 2, summer = 3, fall = 4)
 day.data$yr <- factor(day.data$yr)
+levels(day.data$yr) <- list("2011" = 0, "2012" = 1)
 day.data$mnth <- factor(day.data$mnth)
 day.data$holiday <- factor(day.data$holiday)
 day.data$weekday <- factor(day.data$weekday)
+levels(day.data$weekday) <- list(monday = 1, tuesday = 2, wednesday = 3, thursday = 4, friday = 5, saturday = 6, sunday = 0)
 day.data$workingday <- factor(day.data$workingday)
 day.data$weathersit <- factor(day.data$weathersit)
 ```

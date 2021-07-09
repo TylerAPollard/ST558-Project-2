@@ -1,5 +1,5 @@
-weekday <- c(1,2,3,4,5,6,0)
-output_file <- paste0("Weekday", weekday, "Analysis.md")
+weekday <- c("monday","tuesday","wednesday","thursday","friday","saturday","sunday")
+output_file <- paste0(weekday, "Analysis.md")
 params = lapply(weekday, 
                 FUN = function(x){
                   list(weekday = x)
