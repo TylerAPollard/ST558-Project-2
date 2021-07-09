@@ -5,6 +5,8 @@ output:
  html_document:
    toc: true
    toc_depth: 3
+params: 
+      weekday: 1
 ---
 
 ```{r setup, include=FALSE}
@@ -27,9 +29,11 @@ library(caret)
 # read in data
 hour.data <- read_csv("data/hour.csv") %>% as_tibble()
 day.data <- read_csv("data/day.csv") %>% as_tibble()
+params$weekday
 ```
+
 ```{r data - change type}
-# correct the variaable types
+# correct the variable types
 hour.data$season <- factor(hour.data$season)
 hour.data$yr <- factor(hour.data$yr)
 hour.data$mnth <- factor(hour.data$mnth)
@@ -47,6 +51,7 @@ day.data$weekday <- factor(day.data$weekday)
 day.data$workingday <- factor(day.data$workingday)
 day.data$weathersit <- factor(day.data$weathersit)
 ```
+
 ```{r data - create total data}
 # add in a new variable before merging
 hour.data <- mutate(hour.data, type = "hour")
@@ -55,12 +60,14 @@ day.data <- mutate(day.data, type = "day", hr = NA) %>% select(instant, dteday, 
 # merge to create complete list of hour/day data
 total.data <- rbind(hour.data, day.data)
 ```
+
 ```{r data - filter parameter}
 # filter out to one specific day of the week
-hour.data <- hour.data %>% filter(weekday == 1)
-day.data <- day.data %>% filter(weekday == 1)
-total.data <- total.data %>% filter(weekday == 1)
+hour.data <- hour.data %>% filter(weekday == params$weekday)
+day.data <- day.data %>% filter(weekday == params$weekday)
+total.data <- total.data %>% filter(weekday == params$weekday)
 ```
+
 ```{r data - split training/test}
 # splitting data into training & test sets
 set.seed(7)

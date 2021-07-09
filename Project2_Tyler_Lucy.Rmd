@@ -5,6 +5,8 @@ output:
  html_document:
    toc: true
    toc_depth: 3
+params: 
+      weekday: 1
 ---
 
 ```{r setup, include=FALSE}
@@ -55,9 +57,9 @@ total.data <- rbind(hour.data, day.data)
 
 ```{r data - filter parameter}
 # filter out to one specific day of the week
-hour.data <- hour.data %>% filter(weekday == 1)
-day.data <- day.data %>% filter(weekday == 1)
-total.data <- total.data %>% filter(weekday == 1)
+hour.data <- hour.data %>% filter(weekday == params$weekday)
+day.data <- day.data %>% filter(weekday == params$weekday)
+total.data <- total.data %>% filter(weekday == params$weekday)
 ```
 
 ```{r data - split training/test}
