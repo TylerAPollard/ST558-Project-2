@@ -15,6 +15,10 @@ knitr::opts_chunk$set(echo = TRUE, eval = TRUE, message = FALSE, warning = FALSE
 # Required Packages
 ```{r packages}
 library(tidyverse)
+library(dplyr)
+library(knitr)
+library(ggplot2)
+library(caret)
 ```
 
 # Introduction (lucy)
@@ -71,15 +75,54 @@ total.data <- total.data %>% filter(weekday == params$weekday)
 ```{r data - split training/test}
 # splitting data into training & test sets
 set.seed(7)
-train <- sample(1:nrow(hour.data), size = nrow(hour.data)*0.7)
-test <- dplyr::setdiff(1:nrow(hour.data), train)
-training.data <- hour.data[train, ]
-test.data <- hour.data[test, ]
+train <- sample(1:nrow(day.data), size = nrow(day.data)*0.7)
+test <- dplyr::setdiff(1:nrow(day.data), train)
+day.training.data <- day.data[train, ]
+day.test.data <- day.data[test, ]
+
+hour.training.data <- hour.data[hour.data$dteday %in% day.training.data$dteday,]
+hour.test.data <- hour.data[hour.data$dteday %in% day.test.data$dteday,]
 ```
 
 # Summarization (both)
+## Contingency Tables
+### Weather Situation
+```{r contigency table - weathersit}
+#levels(day.data$weathersit) <- list("1" = "1", "2" = "2", "3" = "3", "4" = "4")
+levels(day.training.data$weathersit) <- list(
+  "Clear, Few clouds, Partly cloudy, Partly cloudy" = "1",
+  "Mist + Cloudy, Mist + Broken clouds, Mist + Few clouds, Mist" = "2",
+  "Light Snow, Light Rain + Thunderstorm + Scattered clouds, Light Rain + Scattered clouds" = "3",
+  "Heavy Rain + Ice Pallets + Thunderstorm + Mist, Snow + Fog" = "4")
+kable(t(table(day.training.data$weathersit)))
+```
 
-  
+## Summary Tables
+### Adjusted Temperature
+```{r summary table - atemp}
+tmin = -16
+tmax = 50
+day.training.data$atemp_unnormal <- day.training.data$atemp*(tmax - tmin) + tmin # Unnormalize temps
+day.training.data$atemp_F <- day.training.data$atemp_unnormal*(9/5) + 32 # Convert to farenheit
+atemp_summary <- day.training.data %>% group_by(yr) %>% summarise(mean = mean(atemp_F), sd = sd(atemp_F), min = min(atemp_F), Q1 = quantile(atemp_F,0.25), median = median(atemp_F), Q3 = quantile(atemp_F, 0.75), max = max(atemp_F))
+kable(atemp_summary, digits = 2)
+```
+
+## Boxplots
+### Adjusted temperature over the year
+```{r boxplot- adjusted temperature}
+atemp_boxplot_df <- day.training.data
+levels(atemp_boxplot_df$mnth) <- list(January = 1, February = 2, March = 3, April = 4, May = 5, June = 6, July = 7, August = 8, September = 9, October = 10, November = 11, December = 12)
+ggplot(data = atemp_boxplot_df, aes(x = mnth, y = atemp_F)) + 
+  geom_boxplot() + 
+  geom_point(position = "jitter", color = "blue") + 
+  labs(title = "Adjusted temperature distribution per month", x = "Month", y = "Adjusted Temperature (F)")
+```
+
+## Scatter Plots
+### Adjusted Temperature Drivers
+
+
 # Modeling
 ## Linear Regression Model
 ### What is Linear Regression Model (tyler)
