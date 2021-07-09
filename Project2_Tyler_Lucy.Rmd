@@ -13,12 +13,13 @@ params:
 knitr::opts_chunk$set(echo = TRUE, eval = TRUE, message = FALSE, warning = FALSE)
 ```
 # Required Packages
-```{r packages}
+```{r packages, echo=FALSE}
 library(tidyverse)
 library(dplyr)
 library(knitr)
 library(ggplot2)
 library(caret)
+library(gridExtra)
 ```
 
 # Introduction (lucy)
@@ -102,18 +103,32 @@ kable(t(table(day.training.data$weathersit)))
 ```{r summary table - atemp}
 tmin = -16
 tmax = 50
-day.training.data$atemp_unnormal <- day.training.data$atemp*(tmax - tmin) + tmin # Unnormalize temps
-day.training.data$atemp_F <- day.training.data$atemp_unnormal*(9/5) + 32 # Convert to farenheit
-atemp_summary <- day.training.data %>% group_by(yr) %>% summarise(mean = mean(atemp_F), sd = sd(atemp_F), min = min(atemp_F), Q1 = quantile(atemp_F,0.25), median = median(atemp_F), Q3 = quantile(atemp_F, 0.75), max = max(atemp_F))
-kable(atemp_summary, digits = 2)
+day.training.data$atemp.unnormal <- day.training.data$atemp*(tmax - tmin) + tmin # Unnormalize temps
+day.training.data$atemp.F <- day.training.data$atemp.unnormal*(9/5) + 32 # Convert to farenheit
+atemp.summary <- day.training.data %>% group_by(yr) %>% summarise(mean = mean(atemp.F), sd = sd(atemp.F), min = min(atemp.F), Q1 = quantile(atemp.F,0.25), median = median(atemp.F), Q3 = quantile(atemp.F, 0.75), max = max(atemp.F))
+kable(atemp.summary, digits = 2)
+```
+
+## Histograms
+### Humidity and Windspeed Distributions
+```{r histogram - count}
+hum.histogram <- ggplot(data = day.training.data, aes(x = hum)) + 
+  geom_histogram(aes(y = ..density..), bins = 30) + 
+  geom_density(color = "red", size = 2) + 
+  labs(title = "Humidity Distribution", x = "Humidity", y = "Density")
+windspeed.histogram <- ggplot(data = day.training.data, aes(x = windspeed)) + 
+  geom_histogram(aes(y = ..density..), bins = 30) + 
+  geom_density(color = "red", size = 2) + 
+  labs(title = "Windspeed Distribution", x = "Windspeed", y = "Density")
+grid.arrange(hum.histogram, windspeed.histogram, ncol = 2)
 ```
 
 ## Boxplots
-### Adjusted temperature over the year
+### Adjusted Temperature Over the Year
 ```{r boxplot- adjusted temperature}
-atemp_boxplot_df <- day.training.data
-levels(atemp_boxplot_df$mnth) <- list(January = 1, February = 2, March = 3, April = 4, May = 5, June = 6, July = 7, August = 8, September = 9, October = 10, November = 11, December = 12)
-ggplot(data = atemp_boxplot_df, aes(x = mnth, y = atemp_F)) + 
+atemp.boxplot.df <- day.training.data
+levels(atemp.boxplot.df$mnth) <- list(January = 1, February = 2, March = 3, April = 4, May = 5, June = 6, July = 7, August = 8, September = 9, October = 10, November = 11, December = 12)
+ggplot(data = atemp.boxplot.df, aes(x = mnth, y = atemp.F)) + 
   geom_boxplot() + 
   geom_point(position = "jitter", color = "blue") + 
   labs(title = "Adjusted temperature distribution per month", x = "Month", y = "Adjusted Temperature (F)")
@@ -121,7 +136,24 @@ ggplot(data = atemp_boxplot_df, aes(x = mnth, y = atemp_F)) +
 
 ## Scatter Plots
 ### Adjusted Temperature Drivers
+```{r scatter - atemp vs temp}
+ggplot(data = day.training.data, aes(x = temp, y = atemp)) + geom_point() + geom_smooth(method = "lm")
+```
 
+### Riders vs Temperature
+```{r scatter - riders}
+# casual.scatter <- ggplot(data = day.training.data, aes(x = temp)) + 
+#   geom_point(aes(y = casual, color = "red"))
+# registered.scatter <- ggplot(data = day.training.data, aes(x = temp)) + 
+#   geom_point(aes(y = registered, color = "blue"))
+# grid.arrange(casual.scatter, registered.scatter, ncol =2)
+day.training.data$temp.indicator <- ifelse(day.training.data$temp < mean(day.training.data$temp), 0, 1)
+day.training.data$temp.indicator <- as_factor(day.training.data$temp.indicator)
+levels(day.training.data$temp.indicator) <- list("Low Temperature" = 0, "High Temperature" = 1)
+ggplot(data = day.training.data, aes(x = temp, y = casual)) + 
+  geom_point() + 
+  facet_grid(cols = vars(temp.indicator))
+```
 
 # Modeling
 ## Linear Regression Model
