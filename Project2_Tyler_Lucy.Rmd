@@ -20,11 +20,13 @@ library(knitr)
 library(ggplot2)
 library(caret)
 library(gridExtra)
+library(corrplot)
+library(GGally)
 ```
 
 # Introduction (lucy)
   
-# Data (lucy)
+# Data (both)
 ```{r data - read in}
 # read in data
 hour.data <- read_csv("data/hour.csv") %>% as_tibble()
@@ -98,6 +100,22 @@ levels(day.training.data$weathersit) <- list(
 kable(t(table(day.training.data$weathersit)))
 ```
 
+### Year, Season and Count of Riders
+```{r}
+
+#table(day.training.data$season)
+#table(day.training.data$yr)
+
+kable(table(day.training.data$season, cut(day.training.data$cnt, breaks = 2)), caption = "Occurrences of # Range of Riders of a given Season")
+kable(table(day.training.data$yr, cut(day.training.data$cnt, breaks = 2)), caption = "Occurrences of # Range of Riders of a given Year")
+```
+
+### Working Day and Count of Casual Riders
+```{r}
+levels(day.training.data$workingday) <- list("workday" = 1, "non-workday" = 0)
+kable(table(day.training.data$workingday, cut(day.training.data$casual, breaks = 2)), caption = "Occurrences of # Range of Casual Riders of Workday vs. non-Workday")
+```
+
 ## Summary Tables
 ### Adjusted Temperature
 ```{r summary table - atemp}
@@ -107,6 +125,18 @@ day.training.data$atemp.unnormal <- day.training.data$atemp*(tmax - tmin) + tmin
 day.training.data$atemp.F <- day.training.data$atemp.unnormal*(9/5) + 32 # Convert to farenheit
 atemp.summary <- day.training.data %>% group_by(yr) %>% summarise(mean = mean(atemp.F), sd = sd(atemp.F), min = min(atemp.F), Q1 = quantile(atemp.F,0.25), median = median(atemp.F), Q3 = quantile(atemp.F, 0.75), max = max(atemp.F))
 kable(atemp.summary, digits = 2)
+```
+
+### Humidity
+```{r}
+kable(t(c(summary(day.training.data$hum), St.Dev. = sd(day.training.data$hum))), digits = 2, caption = "Normalized Humidity")
+kable(t(c(summary(day.training.data$hum*100), St.Dev. = sd(day.training.data$hum*100))), digits = 2, caption = "Raw Humidity")  
+```
+
+### Wind Speed
+```{r}
+kable(t(c(summary(day.training.data$windspeed), St.Dev. = sd(day.training.data$windspeed))), digits = 2, caption = "Normalized Wind Speed")
+kable(t(c(summary(day.training.data$windspeed*67), St.Dev. = sd(day.training.data$windspeed*67))), digits = 2, caption = "Raw Wind Speed ")
 ```
 
 ## Histograms
@@ -123,6 +153,29 @@ windspeed.histogram <- ggplot(data = day.training.data, aes(x = windspeed)) +
 grid.arrange(hum.histogram, windspeed.histogram, ncol = 2)
 ```
 
+## Density Plot
+### Casual Riders and Weather Situation
+```{r}
+ggplot(hour.training.data, aes(x = casual)) + 
+  geom_density(alpha = 0.5, aes(fill = weathersit)) + 
+  labs(title = "Density plot of casual riders",
+       subtitle = "Specified by weather situation",
+       x = "Count of Casual Riders",
+       y = "Density") + 
+  scale_fill_discrete(name = "Weather Situation", labels = c("Mostly Clear", "Mist", "Light Precip.", "Heavy Precip."))  
+```
+
+### Casual Riders and Holiday
+```{r}
+ggplot(hour.training.data, aes(x = casual)) + 
+  geom_density(alpha = 0.5, aes(fill = holiday)) +
+  labs(title = "Density plot of casual riders",
+       subtitle = "Specified by holiday or not",
+       x = "Count of Casual Riders",
+       y = "Density") +
+  scale_fill_discrete(name = "Holiday?", labels = c("Non-Holiday", "Holiday"))    
+```
+
 ## Boxplots
 ### Adjusted Temperature Over the Year
 ```{r boxplot- adjusted temperature}
@@ -132,6 +185,18 @@ ggplot(data = atemp.boxplot.df, aes(x = mnth, y = atemp.F)) +
   geom_boxplot() + 
   geom_point(position = "jitter", color = "blue") + 
   labs(title = "Adjusted temperature distribution per month", x = "Month", y = "Adjusted Temperature (F)")
+```
+
+### Riders of Every Hour and Weather Situation
+```{r}
+ggplot(hour.training.data, aes(x = hr, y = cnt)) + 
+  geom_boxplot() + 
+  stat_summary(fun = mean, geom = "line", lwd = 0.8, aes(group = weathersit, col = weathersit)) + 
+  labs(title = "Count of riders for every hr",
+       subtitle = "Mean values based on weather situation",
+       x = "Hour of the Day",
+       y = "Count of Riders") + 
+  scale_color_discrete(name = "Weather Situation", labels = c("Mostly Clear", "Mist", "Light Precip.", "Heavy Precip."))
 ```
 
 ## Scatter Plots
@@ -154,6 +219,42 @@ ggplot(data = day.training.data, aes(x = temp, y = casual)) +
   geom_point() + 
   facet_grid(cols = vars(temp.indicator))
 ```
+
+### Riders vs. Hour vs. Month vs. Working Day
+```{r}
+count.df <- hour.training.data
+levels(count.df$mnth) <- list(January = 1, February = 2, March = 3, April = 4, May = 5, June = 6, July = 7, August = 8, September = 9, October = 10, November = 11, December = 12)
+ggplot(count.df, aes(x = hr, y = cnt)) +
+  geom_point(aes(col = workingday)) +
+  facet_wrap(vars(mnth)) + 
+  labs(title = "Count of riders for every hour of every month",
+       subtitle = "Specified by workday or non-workday",
+       x = "Hour of the Day",
+       y = "Count of Riders") + 
+  scale_color_discrete(name = "Working Day", labels = c("No", "Yes"))
+```
+
+## Correlation Plot 
+### Correlation between temp, atemp, hum, windspeed
+```{r}
+cor.variables <- hour.training.data %>% select(temp, atemp, hum, windspeed)
+correlation <- cor(cor.variables, method = "spearman")
+corrplot(correlation)
+```
+
+## Plots with GGally
+### Using Day Data
+```{r}
+subset.data.day <- data_frame(weathersit=day.training.data$weathersit, temp=day.training.data$temp, atemp=day.training.data$atemp,humidity=day.training.data$hum, windspeed=day.training.data$windspeed, casual=day.training.data$casual, registered=day.training.data$registered, total=day.training.data$cnt)
+GGally::ggpairs(subset.data.day)
+```
+
+### Using Hour Data
+```{r}
+subset.data.hr <- data_frame(weathersit=hour.training.data$weathersit, temp=hour.training.data$temp, atemp=hour.training.data$atemp,humidity=hour.training.data$hum, windspeed=hour.training.data$windspeed, casual=hour.training.data$casual, registered=hour.training.data$registered, total=hour.training.data$cnt)
+GGally::ggpairs(subset.data.hr)
+```
+
 
 # Modeling
 ## Linear Regression Model
