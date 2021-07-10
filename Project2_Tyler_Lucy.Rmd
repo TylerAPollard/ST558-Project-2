@@ -6,7 +6,7 @@ output:
    toc: true
    toc_depth: 3
 params: 
-      weekday: monday
+      weekday: saturday
 ---
 
 ```{r setup, include=FALSE}
@@ -243,8 +243,8 @@ ggplot(count.df, aes(x = hr, y = cnt)) +
   labs(title = "Count of riders for every hour of every month",
        subtitle = "Specified by workday or non-workday",
        x = "Hour of the Day",
-       y = "Count of Riders") + 
-  scale_color_discrete(name = "Working Day", labels = c("No", "Yes"))
+       y = "Count of Riders") +
+  scale_color_discrete(name = "Working Day")
 ```
 
 ## Correlation Plot 
@@ -272,17 +272,107 @@ GGally::ggpairs(subset.data.hr)
 # Modeling
 ## Linear Regression Model
 ### What is Linear Regression Model (tyler)
-  
+
+### Picking predictors using AIC
+```{r}
+# keep only variables that are relevant to modeling
+if.weekday <- hour.training.data %>% filter(weekday == params$weekday) %>% select(workingday) %>% unique() %>% nrow()
+if.holiday <- hour.training.data %>% filter(weekday == params$weekday) %>% select(holiday) %>% unique() %>% nrow()
+
+get.data <- function(weekday, ...){
+  if (if.weekday == 1 & if.holiday == 1) {
+    hour.training.data2 <- hour.training.data %>% select(season, yr, mnth, hr, weathersit, temp, atemp, hum, windspeed, cnt)
+  }
+  else {
+    hour.training.data2 <- hour.training.data %>% select(season, yr, mnth, hr, holiday, workingday, weathersit, temp, atemp, hum, windspeed, cnt)
+  }
+  hour.training.data2
+}
+hour.training.data2 <- get.data(params$weekday)
+
+# aic using only 1st ordered terms
+fit.aic <- step((lm(cnt ~ ., data = hour.training.data2)), direction = "both")
+
+# aic including squared terms and interactions
+fit.aic2 <- step((lm(cnt ~ .^2 + I(temp^2) + I(atemp^2) + I(hum^2) + I(windspeed^2), data = hour.training.data2)), direction = "both")
+```  
+
 ### Linear Regression Model (tyler)
 
 ### Linear Regression Model (lucy)
-  
-  
+#### Modeling using AIC picked predictors
+```{r}
+# use all predictors except atemp and holiday
+set.seed(7)
+fit.mlr0 <- train(cnt ~ season + yr + mnth + hr + workingday + weathersit + temp + hum + windspeed,
+                  data = hour.training.data2,
+                  method = "lm",
+                  trControl = trainControl(method = "cv", number = 10))
+fit.mlr0
+
+predict.mlr0 <- postResample(predict(fit.mlr0, newdata = hour.test.data), obs = hour.test.data$cnt)
+
+# use aic predictors (1st ordered terms)
+set.seed(7)
+fit.mlr1 <- train(fit.aic$terms,
+                  data = hour.training.data2,
+                  method = "lm",
+                  trControl = trainControl(method = "cv", number = 10))
+fit.mlr1
+predict.mlr1 <- postResample(predict(fit.mlr1, newdata = hour.test.data), obs = hour.test.data$cnt)
+
+# use aic predictors (2nd ordered terms and interactions)
+set.seed(7)
+fit.mlr2 <- train(fit.aic2$terms,
+                  data = hour.training.data2,
+                  method = "lm",
+                  trControl = trainControl(method = "cv", number = 10))
+fit.mlr2
+predict.mlr2 <- postResample(predict(fit.mlr2, newdata = hour.test.data), obs = hour.test.data$cnt)
+```
+
+
 ## Ensemble Tree Model
 ### Random Forest Model (tyler)
 
 ### Boosted Tree Model (lucy)
-  
-  
+The boosted tree model is a type of tree based method where we grow our trees in a sequential manner, each tree we create will be based off the previous tree so we can update our prediction as we go. For example, we'd fit our model and get a prediction, then create a new model based off the previous, update the prediction on this new model, and we'd repeat this process until we decide to stop. Boosted tree model slowly trains the trees to ensure we don't overfit to our training data. How this is actually done is we create new residuals based off `observed - new predictions`, fit a tree to those residuals to get new predictions $\hat{y}$, then update our predictions again by a scaled down version of the new predictions $\lambda \hat{y}^{b}$ (here $\lambda$ is the growth rate tuning parameter, which keeps us from growing our predictions too quickly). We repeat this process a total of `B` times. We can use cross validation to select what $\lambda$, `d` and `B` should be. Formula used to update predictions is $\hat{y} = \hat{y} + \lambda \hat{y}^{b}$.
+ 
+```{r}
+set.seed(7)
+fit.boosted.trial <- train(fit.aic$terms,
+                     data = hour.training.data2,
+                     method = "gbm",
+                     trControl = trainControl(method = "cv", number = 10),
+                     verbose = FALSE)
+fit.boosted.trial
+```
+```{r}
+set.seed(7)
+fit.boosted <- train(fit.aic$terms,
+                     data = hour.training.data2,
+                     method = "gbm",
+                     trControl = trainControl(method = "cv", number = 10),
+                     verbose = FALSE,
+                     tuneGrid = expand.grid(interaction.depth = c(3:10),
+                                            n.trees = (3:10)*50,
+                                            shrinkage = 0.1,
+                                            n.minobsinnode = 10))
+fit.boosted
+
+predict.boosted <- postResample(predict(fit.boosted, newdata = hour.test.data), obs = hour.test.data$cnt)
+```  
   
 # Comparison (either)
+```{r}
+compare.rmse <- data.frame(predict.mlr0, 
+                           predict.mlr1,
+                           predict.mlr2,
+                           predict.boosted)
+colnames(compare.rmse) <- c("predict.mlr0", "predict.mlr1", "predict.mlr2", "predict.boosted")
+compare.rmse
+```
+```{r}
+apply(compare.rmse["RMSE",], 1, FUN=min)
+```
+
