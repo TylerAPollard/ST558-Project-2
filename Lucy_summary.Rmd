@@ -1,0 +1,198 @@
+---
+title: "ST558 - Project 2"
+author: "Tyler Pollard & Lucy Yin"
+output: 
+ html_document:
+   toc: true
+   toc_depth: 3
+params: 
+      weekday: monday
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = TRUE, message = FALSE, warning = FALSE)
+options(scipen = 999)
+```
+# Required Packages
+```{r packages, echo=FALSE}
+library(tidyverse)
+library(dplyr)
+library(knitr)
+library(ggplot2)
+library(caret)
+library(gridExtra)
+library(corrplot)
+library(GGally)
+```
+
+# Introduction (lucy)
+  
+# Data (lucy)
+```{r data - read in}
+# read in data
+hour.data <- read_csv("data/hour.csv") %>% as_tibble()
+day.data <- read_csv("data/day.csv") %>% as_tibble()
+```
+
+```{r data - change type}
+# correct the variaable types
+hour.data$season <- factor(hour.data$season)
+levels(hour.data$season) <- list(winter = 1, spring = 2, summer = 3, fall = 4)
+hour.data$yr <- factor(hour.data$yr)
+levels(hour.data$yr) <- list("2011" = 0, "2012" = 1)
+hour.data$mnth <- factor(hour.data$mnth)
+hour.data$hr <- factor(hour.data$hr)
+hour.data$holiday <- factor(hour.data$holiday)
+hour.data$weekday <- factor(hour.data$weekday)
+levels(hour.data$weekday) <- list(monday = 1, tuesday = 2, wednesday = 3, thursday = 4, friday = 5, saturday = 6, sunday = 0)
+hour.data$workingday <- factor(hour.data$workingday)
+hour.data$weathersit <- factor(hour.data$weathersit)
+
+day.data$season <- factor(day.data$season)
+levels(day.data$season) <- list(winter = 1, spring = 2, summer = 3, fall = 4)
+day.data$yr <- factor(day.data$yr)
+levels(day.data$yr) <- list("2011" = 0, "2012" = 1)
+day.data$mnth <- factor(day.data$mnth)
+day.data$holiday <- factor(day.data$holiday)
+day.data$weekday <- factor(day.data$weekday)
+levels(day.data$weekday) <- list(monday = 1, tuesday = 2, wednesday = 3, thursday = 4, friday = 5, saturday = 6, sunday = 0)
+day.data$workingday <- factor(day.data$workingday)
+day.data$weathersit <- factor(day.data$weathersit)
+```
+
+```{r data - create total data}
+# add in a new variable before merging
+hour.data <- mutate(hour.data, type = "hour")
+day.data <- mutate(day.data, type = "day", hr = NA) %>% select(instant, dteday, season, yr, mnth, hr, everything())
+
+# merge to create complete list of hour/day data
+total.data <- rbind(hour.data, day.data)
+```
+
+```{r data - filter parameter}
+# filter out to one specific day of the week
+hour.data <- hour.data %>% filter(weekday == params$weekday)
+day.data <- day.data %>% filter(weekday == params$weekday)
+total.data <- total.data %>% filter(weekday == params$weekday)
+```
+
+```{r data - split training/test}
+# splitting data into training & test sets
+set.seed(7)
+train <- sample(1:nrow(day.data), size = nrow(day.data)*0.7)
+test <- dplyr::setdiff(1:nrow(day.data), train)
+day.training.data <- day.data[train, ]
+day.test.data <- day.data[test, ]
+
+hour.training.data <- hour.data[hour.data$dteday %in% day.training.data$dteday,]
+hour.test.data <- hour.data[hour.data$dteday %in% day.test.data$dteday,]
+```
+
+# Summarization (both)
+## Contingency Tables
+### Year, Season and Count of Riders
+```{r}
+
+#table(day.training.data$season)
+#table(day.training.data$yr)
+
+kable(table(day.training.data$season, cut(day.training.data$cnt, breaks = 2)), caption = "Occurrences of # Range of Riders of a given Season")
+kable(table(day.training.data$yr, cut(day.training.data$cnt, breaks = 2)), caption = "Occurrences of # Range of Riders of a given Year")
+```
+### Working Day and Count of Casual Riders
+```{r}
+levels(day.training.data$workingday) <- list("workday" = 1, "non-workday" = 0)
+kable(table(day.training.data$workingday, cut(day.training.data$casual, breaks = 2)), caption = "Occurrences of # Range of Casual Riders of Workday vs. non-Workday")
+```
+
+## Summary Tables
+### Humidity
+```{r}
+kable(t(c(summary(day.training.data$hum), St.Dev. = sd(day.training.data$hum))), digits = 2, caption = "Normalized Humidity")
+kable(t(c(summary(day.training.data$hum*100), St.Dev. = sd(day.training.data$hum*100))), digits = 2, caption = "Raw Humidity")  
+```
+### Wind Speed
+```{r}
+kable(t(c(summary(training.data$windspeed), St.Dev. = sd(training.data$windspeed))), digits = 2, caption = "Normalized Wind Speed")
+kable(t(c(summary(training.data$windspeed*67), St.Dev. = sd(training.data$windspeed*67))), digits = 2, caption = "Raw Wind Speed ")
+```
+
+## Density Plot
+```{r}
+ggplot(hour.training.data, aes(x = casual)) + 
+  geom_density(alpha = 0.5, aes(fill = weathersit)) + 
+  labs(title = "Density plot of casual riders",
+       subtitle = "Specified by weather situation",
+       x = "Count of Casual Riders",
+       y = "Density") + 
+  scale_fill_discrete(name = "Weather Situation", labels = c("Mostly Clear", "Mist", "Light Precip.", "Heavy Precip."))  
+```
+
+```{r}
+ggplot(hour.training.data, aes(x = casual)) + 
+  geom_density(alpha = 0.5, aes(fill = holiday)) +
+  labs(title = "Density plot of casual riders",
+       subtitle = "Specified by holiday or not",
+       x = "Count of Casual Riders",
+       y = "Density") +
+  scale_fill_discrete(name = "Holiday?", labels = c("Non-Holiday", "Holiday"))    
+```
+
+
+## Scatter plots
+```{r}
+count.df <- hour.training.data
+levels(count.df$mnth) <- list(January = 1, February = 2, March = 3, April = 4, May = 5, June = 6, July = 7, August = 8, September = 9, October = 10, November = 11, December = 12)
+ggplot(count.df, aes(x = hr, y = cnt)) +
+  geom_point(aes(col = workingday)) +
+  facet_wrap(vars(mnth)) + 
+  labs(title = "Count of riders for every hour of every month",
+       subtitle = "Specified by workday or non-workday",
+       x = "Hour of the Day",
+       y = "Count of Riders") + 
+  scale_color_discrete(name = "Working Day", labels = c("No", "Yes"))
+```
+## Box Plots
+```{r}
+ggplot(hour.training.data, aes(x = hr, y = cnt)) + 
+  geom_boxplot() + 
+  stat_summary(fun = mean, geom = "line", lwd = 0.8, aes(group = weathersit, col = weathersit)) + 
+  labs(title = "Count of riders for every hr",
+       subtitle = "Mean values based on weather situation",
+       x = "Hour of the Day",
+       y = "Count of Riders") + 
+  scale_color_discrete(name = "Weather Situation", labels = c("Mostly Clear", "Mist", "Light Precip.", "Heavy Precip."))
+```
+## Correlation Plot 
+```{r}
+cor.variables <- hour.training.data %>% select(temp, atemp, hum, windspeed)
+correlation <- cor(cor.variables, method = "spearman")
+corrplot(correlation)
+```
+```{r}
+subset.data <- data_frame(weathersit=day.training.data$weathersit, temp=day.training.data$temp, atemp=day.training.data$atemp,humidity=day.training.data$hum, windspeed=day.training.data$windspeed, casual=day.training.data$casual, registered=day.training.data$registered, total=day.training.data$cnt)
+GGally::ggpairs(subset.data)
+```
+```{r}
+subset.data2 <- data_frame(weathersit=hour.training.data$weathersit, temp=hour.training.data$temp, atemp=hour.training.data$atemp,humidity=hour.training.data$hum, windspeed=hour.training.data$windspeed, casual=hour.training.data$casual, registered=hour.training.data$registered, total=hour.training.data$cnt)
+GGally::ggpairs(subset.data2)
+```
+
+
+# Modeling
+## Linear Regression Model
+### What is Linear Regression Model (tyler)
+  
+### Linear Regression Model (tyler)
+
+### Linear Regression Model (lucy)
+  
+  
+## Ensemble Tree Model
+### Random Forest Model (tyler)
+
+### Boosted Tree Model (lucy)
+  
+  
+  
+# Comparison (either)
