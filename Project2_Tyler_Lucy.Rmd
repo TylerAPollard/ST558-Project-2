@@ -88,8 +88,9 @@ hour.test.data <- hour.data[hour.data$dteday %in% day.test.data$dteday,]
 # Summarization (both)
 ## Contingency Tables
 ### Weather Situation
+Below is a contigency table that shows the count of days that fall into the different categories of weather situation. This table will 
+
 ```{r contigency table - weathersit}
-#levels(day.data$weathersit) <- list("1" = "1", "2" = "2", "3" = "3", "4" = "4")
 levels(day.training.data$weathersit) <- list(
   "Clear, Few clouds, Partly cloudy, Partly cloudy" = "1",
   "Mist + Cloudy, Mist + Broken clouds, Mist + Few clouds, Mist" = "2",
@@ -137,7 +138,17 @@ ggplot(data = atemp.boxplot.df, aes(x = mnth, y = atemp.F)) +
 ## Scatter Plots
 ### Adjusted Temperature Drivers
 ```{r scatter - atemp vs temp}
-ggplot(data = day.training.data, aes(x = temp, y = atemp)) + geom_point() + geom_smooth(method = "lm")
+ggplot(data = day.training.data, aes(x = temp, y = atemp)) + geom_point() + geom_smooth(method = "lm") + 
+  labs(title = "Adjusted Temperature vs Temperature", x = "Temperature", y = "Adjusted Temperature")
+```
+
+### Count vs Casual by Season
+```{r scatter - registered vs count}
+ggplot(data = day.training.data, aes(x = cnt, y = casual)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  facet_grid(cols = vars(season)) + 
+  labs(title = "Casual Riders Influence on Total Count", x = "Count", y = "Casual Riders")
 ```
 
 ### Riders vs Temperature
@@ -150,9 +161,11 @@ ggplot(data = day.training.data, aes(x = temp, y = atemp)) + geom_point() + geom
 day.training.data$temp.indicator <- ifelse(day.training.data$temp < mean(day.training.data$temp), 0, 1)
 day.training.data$temp.indicator <- as_factor(day.training.data$temp.indicator)
 levels(day.training.data$temp.indicator) <- list("Low Temperature" = 0, "High Temperature" = 1)
-ggplot(data = day.training.data, aes(x = temp, y = casual)) + 
+ggplot(data = day.training.data, aes(x = temp, y = casual, color = workingday)) + 
   geom_point() + 
-  facet_grid(cols = vars(temp.indicator))
+  geom_smooth() + #method = "lm"
+  #facet_grid(cols = vars(temp.indicator)) + 
+  labs(title = "Casual Riders Based on Temperature", x = "Temperature", y = "Number of Casual Riders")
 ```
 
 # Modeling
