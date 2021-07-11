@@ -46,9 +46,9 @@ There are 3 different types of response variables in the dataset:
 * casual: un-registered riders who use this service casually or on occasions  
 * total: combined count of registered and casual riders  
   
-For our analysis, we will be working with almost of the variables as predictors, and our response variable will be the total count of bike riders.  
+For our analysis, we will be working with almost all of the variables as predictors, and our response variable will be the total count of bike riders.  
   
-We will be selecting predictors using the `step()` function which chooses a model by AIC in a stepwise algorithm. As a result, which predictors we incorporate in our linear regression models and ensemble tree (specifically random forest and boosted tree) models may differ depending on which day of the week we look at. We'll randomly split the data into training and test sets and fit the 6 models on the training set. Ultimately we're will fit the 6 models on test set and decide on which model produced better prediction, which we judge by the smallest root mean squared error value.  
+We will be selecting predictors using the `step()` function which chooses a model by AIC in a stepwise algorithm. As a result, which predictors we incorporate in our linear regression models and ensemble tree (specifically random forest and boosted tree) models may differ depending on which day of the week we look at. We'll randomly split the data into training and test sets and fit the 6 models on the training set. Ultimately we will fit the 6 models on the test set and decide on which model produced the best prediction, which we judge by the smallest root mean squared error value.  
     
 # Data
 ```{r data - read in}
@@ -147,26 +147,22 @@ hour.training.data <- hour.data[hour.data$dteday %in% day.training.data$dteday,]
 hour.test.data <- hour.data[hour.data$dteday %in% day.test.data$dteday,]
 ```
 
-# Summarization (both)
+# Summarization
 ## Contingency Tables
 ### Weather Situation
-Below is a contingency table that shows the count of days that fall into the different categories of weather situation. This table will 
+Below is a contingency table that shows the count of days that fall into the different categories of weather situation. This table will help justify the total count of riders because it can be expected that the number of casual riders, which influences the total count of riders, will be higher on nicer days that fall into the first two categories of Mostly clear and Mist.
 
 ```{r contigency table - weathersit}
 levels(day.training.data$weathersit) <- list(
-  "Clear, Few clouds, Partly cloudy, Partly cloudy" = "1",
-  "Mist + Cloudy, Mist + Broken clouds, Mist + Few clouds, Mist" = "2",
-  "Light Snow, Light Rain + Thunderstorm + Scattered clouds, Light Rain + Scattered clouds" = "3",
-  "Heavy Rain + Ice Pallets + Thunderstorm + Mist, Snow + Fog" = "4")
+  "Mostly clear" = "1",
+  "Mist" = "2",
+  "Light precipitation" = "3",
+  "Heavy precipitation" = "4")
 kable(t(table(day.training.data$weathersit)))
 ```
 
 ### Year, Season and Count of Riders
 ```{r contingency table - year,season,count}
-
-#table(day.training.data$season)
-#table(day.training.data$yr)
-
 kable(table(day.training.data$season, cut(day.training.data$cnt, breaks = 2)), caption = "Occurrences of # Range of Riders of a given Season")
 kable(table(day.training.data$yr, cut(day.training.data$cnt, breaks = 2)), caption = "Occurrences of # Range of Riders of a given Year")
 ```
@@ -178,10 +174,17 @@ kable(table(day.training.data$workingday, cut(day.training.data$casual, breaks =
 ```
 
 ## Summary Tables
-### Adjusted Temperature
+### Feeling Temperature
+The summary tables of feeling temperature show the 5 number summary along with the mean and standard deviation of what the temperature actually felt like over the different years. The summary table for both the normalized and raw feeling temperatures are provided. These tables give insight to the range of feeling temperatures felt by the riders for the different years.
+
 ```{r summary table - atemp}
-atemp.summary <- hour.training.data %>% group_by(yr) %>% summarise(mean = mean(atemp.F), sd = sd(atemp.F), min = min(atemp.F), Q1 = quantile(atemp.F,0.25), median = median(atemp.F), Q3 = quantile(atemp.F, 0.75), max = max(atemp.F))
-kable(atemp.summary, digits = 2)
+# Normalized feeling temperature
+atemp.summary <- hour.training.data %>% group_by(yr) %>% summarise(Min. = min(atemp), `1st Qu.` = quantile(atemp,0.25), Median = median(atemp), Mean = mean(atemp), `3rd Qu.` = quantile(atemp, 0.75), Max. = max(atemp), `St. Dev.` = sd(atemp))
+kable(atemp.summary, digits = 2, caption = "Summary of feeling temperatures by year")
+
+# Raw feeling temperature in Farenheit
+atemp.summary.unnormal <- hour.training.data %>% group_by(yr) %>% summarise(Min. = min(atemp.F), `1st Qu.` = quantile(atemp.F,0.25), Median = median(atemp.F), Mean = mean(atemp.F), `3rd Qu.` = quantile(atemp.F, 0.75), Max. = max(atemp.F), `St. Dev.` = sd(atemp.F))
+kable(atemp.summary.unnormal, digits = 2, caption = "Summary of feeling temperatures by year")
 ```
 
 ### Humidity
@@ -198,6 +201,8 @@ kable(t(c(summary(day.training.data$windspeed.unnormal), St.Dev. = sd(day.traini
 
 ## Histograms
 ### Humidity and Windspeed Distributions
+The following density plots show the distribution of the weather effects for raw humidity and raw wind speed over the span of the biker data. These distributions provide insight on what values for each weather effect can be expected and how the combination of each effect may drive the different weather situations and in turn the expected count of riders.
+
 ```{r histogram - count}
 hum.histogram <- ggplot(data = day.training.data, aes(x = hum.unnormal)) + 
   geom_histogram(aes(y = ..density..), bins = 30) + 
@@ -207,7 +212,7 @@ windspeed.histogram <- ggplot(data = day.training.data, aes(x = windspeed.unnorm
   geom_histogram(aes(y = ..density..), bins = 30) + 
   geom_density(color = "red", size = 2) + 
   labs(title = "Windspeed Distribution", x = "Raw Windspeed", y = "Density")
-grid.arrange(hum.histogram, windspeed.histogram, ncol = 2)
+grid.arrange(hum.histogram, windspeed.histogram, ncol = 2, top = "Density Distribution of Weather Effects")
 ```
 
 ## Density Plot
@@ -279,6 +284,8 @@ ggplot(hour.training.data, aes(x = cnt)) +
 
 ## Boxplots
 ### Feeling Temperature Over the Year
+To get a better understanding of the feeling temperature spreads over the year, boxplots of the feeling temperature are plotted by month with the data points for each day used to create them plotted overtop. Intuitively, it can be expected that the feeling temperature rises from the beginning of the year into the middle of summer and then drops back down over the fall and winter months. These boxplots provide insight into the possible number of rider flucuation over the different months of the year.
+
 ```{r boxplot- adjusted temperature, fig.width = 8}
 atemp.boxplot.df <- day.training.data
 levels(atemp.boxplot.df$mnth) <- list(January = 1, February = 2, March = 3, April = 4, May = 5, June = 6, July = 7, August = 8, September = 9, October = 10, November = 11, December = 12)
@@ -302,6 +309,8 @@ ggplot(hour.training.data, aes(x = hr, y = cnt)) +
 
 ## Scatter Plots
 ### Count vs Casual by Season
+These four scatter plots show the relation between the total number of riders and casual riders by day with linear models plotted overtop parsed by season. These plots show how the number of casual riders contribute to the total count of riders for each season. The greater the slope of the linear model correlates to a greater number of causal riders contributing to the total count of riders.
+
 ```{r scatter - registered vs count}
 ggplot(data = day.training.data, aes(x = cnt, y = casual)) +
   geom_point() +
@@ -312,23 +321,17 @@ ggplot(data = day.training.data, aes(x = cnt, y = casual)) +
 
 ### Riders vs Temperature
 ```{r scatter - riders}
-# casual.scatter <- ggplot(data = day.training.data, aes(x = temp)) + 
-#   geom_point(aes(y = casual, color = "red"))
-# registered.scatter <- ggplot(data = day.training.data, aes(x = temp)) + 
-#   geom_point(aes(y = registered, color = "blue"))
-# grid.arrange(casual.scatter, registered.scatter, ncol =2)
 day.training.data$temp.indicator <- ifelse(day.training.data$temp < mean(day.training.data$temp), 0, 1)
 day.training.data$temp.indicator <- as_factor(day.training.data$temp.indicator)
 levels(day.training.data$temp.indicator) <- list("Low Temperature" = 0, "High Temperature" = 1)
 ggplot(data = day.training.data, aes(x = temp.F, y = casual, color = workingday)) + 
   geom_point() + 
-  geom_smooth() + #method = "lm"
-  #facet_grid(cols = vars(temp.indicator)) + 
+  geom_smooth() + 
   labs(title = "Casual Riders Based on Temperature", x = "Raw Temperature", y = "Number of Casual Riders")
 ```
 
 ### Riders vs. Hour vs. Month vs. Working Day
-```{r scatter - count,hour,month,workingday}
+```{r scatter - count,hour,month,workingday, fig.width = 12}
 count.df <- hour.training.data
 levels(count.df$mnth) <- list(January = 1, February = 2, March = 3, April = 4, May = 5, June = 6, July = 7, August = 8, September = 9, October = 10, November = 11, December = 12)
 ggplot(count.df, aes(x = hr, y = cnt)) +
@@ -366,6 +369,13 @@ GGally::ggpairs(subset.data.hr)
 # Modeling
 ## Linear Regression Model
 ### What is Linear Regression Model (tyler)
+Linear regression is a type of modeling used to predict a response based on explainatory variables by fitting a linear equation to observed data. For simple linear regression using a single explainatory variable to predict a response variable the equation is ${Y}_{i} = \beta_{0} + \beta_{1}{x}_{i} + {E}_{i}$ where ${Y}_{i}$ is the response for the ${i}^{th}$ observation, ${x}_{i}$ is the value of the explanatory variable for the ${i}^{th}$ observation, $\beta_{0}$ is the y-intercept, $\beta_{1}$ is the slope, and ${E}_{i}$ is the error for the ${i}^{th}$ observation. Fitting a linear model to the observed dataset requires estimating the coefficients $\beta$ such that the error term ${E}_{i} = {Y}_{i} - \beta_{0} - \beta_{1}{x}_{i}$ is minimized. The most common way to minimize this term is through least-squares where we minimize the sum of squared residuals through $min_{\beta_{0},\beta_{1}}\sum_{i=1}^n ({y}_{i} - \beta_{0} - \beta_{1}{x}_{i})$. Simple linear regression can be extended in many ways to include:  
+
+  * higher order terms: ${Y}_{i} = \beta_{0} + \beta_{1}{x}_{i} + \beta_{2}{x}_{i}^{2} + {E}_{i}$
+  * more explanatory variables: ${Y}_{i} = \beta_{0} + \beta_{1}{x}_{1i} + \beta_{2}{x}_{2i} + \beta_{3}{x}_{1i}{x}_{2i} + {E}_{i}$
+  * more explanatory variables and higher order terms: ${Y}_{i} = \beta_{0} + \beta_{1}{x}_{1i} + \beta_{2}{x}_{2i} + \beta_{3}{x}_{1i}{x}_{2i} + \beta_{4}{x}_{1i}^{2} + \beta_{5}{x}_{2i}^{2} + {E}_{i}$
+  
+In each of these linear regressions the model is still fit by minimizing the sum of squared errors. As the number of explanatory variables increase these regression models can become quite large, so it is best to compare different candidate models to see which provides the best fit of the data. Usually you would have some sort of subject matter knowledge to help select these candidate models by understanding which variables are related and which variables scientifically should be put in the model. Without subject matter knowledge you might select multiple candidate models and compare them using fit criteria such as AIC, BIC, AICc, Adjusted R-squared or Variance Inflation Factor (VIF). Alternatively, you may compare prediction error by splitting the data into a training and test set with a 80/20 split and fit the candidate models on the training set to predict the response of the test set. The model with the lowest RMSE should be considered to be the best fit as it minimized the error the best.
 
 ### Picking predictors using AIC
 ```{r filter out variables for modeling}
@@ -452,7 +462,8 @@ predict.mlr3 <- postResample(predict(fit.mlr3, newdata = hour.test.data), obs = 
 ```
 
 ## Ensemble Tree Model
-### Random Forest Model (tyler)
+### Random Forest Model
+The random forest model is a type of tree based method where we create multiple trees from bootstrap samples of the data and then average the results. This process is done by first creating a bootstrap sample of the data and then training a tree on this sample where we call the prediction for a given set of $x$ values $\hat{y}^{*1}(x)$. This process is then repeated a $B$ number of times to obtain $\hat{y}^{*j}(x), j = 1,...,B$. The final prediction is the average of these predictions $\hat{y}(x) = \frac{1}{B}\sum_{j=1}^{B}\hat{y}^{*j}(x)$. For each of these bootstrap sample/tree fits a random subset of predictors is chosen becasue if a really strong predictor exists, every bootstrap tree will probably use it as the first split. By selecting a subset of predictors, a good predictor or two won't dominate the tree fits. The number of predictors for a random forest regression tree is usually $m = p/3$ where $m$ is the random predictors chosen and $p$ is the full set of possible predictors. Cross-validation can also be used to select these random predictors as we did in our random forest model.
   
 ```{r models - random forest default}
 # Fit random forest model
@@ -479,7 +490,6 @@ fit.random.forest
 # Examine performance of random forest model on the test data after prediction
 predict.rf <- postResample(predict(fit.random.forest, newdata = hour.test.data), obs = hour.test.data$cnt)
 ```
-
 
 ### Boosted Tree Model
 The boosted tree model is a type of tree based method where we grow our trees in a sequential manner, each tree we create will be based off the previous tree so we can update our prediction as we go. For example, we'd fit our model and get a prediction, then create a new model based off the previous, update the prediction on this new model, and we'd repeat this process until we decide to stop. Boosted tree model slowly trains the trees to ensure we don't overfit to our training data. How this is actually done is we create new residuals based off `observed - new predictions`, fit a tree to those residuals to get new predictions $\hat{y}$, then update our predictions again by a scaled down version of the new predictions $\lambda \hat{y}^{b}$ (here $\lambda$ is the growth rate tuning parameter, which keeps us from growing our predictions too quickly). We repeat this process a total of `B` times. We can use cross validation to select what $\lambda$, `d` and `B` should be. Formula used to update predictions is $\hat{y} = \hat{y} + \lambda \hat{y}^{b}$.  
