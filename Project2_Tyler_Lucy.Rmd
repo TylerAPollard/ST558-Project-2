@@ -25,7 +25,7 @@ library(GGally)
 ```
 
 # Introduction
-For this report we will be using 4 models to make predictions on the total count of bike riders using data from the Bike Sharing Dataset (dataset can be found [here](https://archive.ics.uci.edu/ml/datasets/Bike+Sharing+Dataset)). This dataset contains hourly and daily count of registered, casual, and total sum of riders in the Capital bikeshare system, contributing variables include:  
+For this report we will be using 6 models (4 linear regression, 1 random forest model, 1 boosted tree model) to make predictions on the total count of bike riders using data from the Bike Sharing Dataset (dataset can be found [here](https://archive.ics.uci.edu/ml/datasets/Bike+Sharing+Dataset)). This dataset contains hourly and daily count of registered, casual, and total sum of riders in the Capital bikeshare system, contributing variables include:  
   
 * season (winter, spring, summer, fall)  
 * year (2011, 2012)  
@@ -48,7 +48,7 @@ There are 3 different types of response variables in the dataset:
   
 For our analysis, we will be working with almost of the variables as predictors, and our response variable will be the total count of bike riders.  
   
-We will be selecting predictors using the `step()` function which chooses a model by AIC in a stepwise algorithm. As a result, which predictors we incorporate in our linear regression models and ensemble tree (specifically random forest and boosted tree) models may differ depending on which day of the week we look at. We'll randomly split the data into training and test sets and fit the 4 models on the training set. Ultimately we're will fit the 4 models on test set and decide on which model produced better prediction, which we judge by the smallest root mean squared error value.  
+We will be selecting predictors using the `step()` function which chooses a model by AIC in a stepwise algorithm. As a result, which predictors we incorporate in our linear regression models and ensemble tree (specifically random forest and boosted tree) models may differ depending on which day of the week we look at. We'll randomly split the data into training and test sets and fit the 6 models on the training set. Ultimately we're will fit the 6 models on test set and decide on which model produced better prediction, which we judge by the smallest root mean squared error value.  
     
 # Data
 ```{r data - read in}
@@ -530,9 +530,3 @@ min.compare.rmse <- min(compare.rmse["RMSE",])
 min.test <- compare.rmse["RMSE",] == min.compare.rmse
 paste0("After comparing all models on the test set, the model with the best prediction (lowest root MSE value) is the  ", colnames(compare.rmse)[min.test], " model.")
 ```
-
-
-
-
-
-
