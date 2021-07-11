@@ -464,6 +464,7 @@ predict.mlr3 <- postResample(predict(fit.mlr3, newdata = hour.test.data), obs = 
 ## Ensemble Tree Model
 ### Random Forest Model
 The random forest model is a type of tree based method where we create multiple trees from bootstrap samples of the data and then average the results. This process is done by first creating a bootstrap sample of the data and then training a tree on this sample where we call the prediction for a given set of $x$ values $\hat{y}^{*1}(x)$. This process is then repeated a $B$ number of times to obtain $\hat{y}^{*j}(x), j = 1,...,B$. The final prediction is the average of these predictions $\hat{y}(x) = \frac{1}{B}\sum_{j=1}^{B}\hat{y}^{*j}(x)$. For each of these bootstrap sample/tree fits a random subset of predictors is chosen becasue if a really strong predictor exists, every bootstrap tree will probably use it as the first split. By selecting a subset of predictors, a good predictor or two won't dominate the tree fits. The number of predictors for a random forest regression tree is usually $m = p/3$ where $m$ is the random predictors chosen and $p$ is the full set of possible predictors. Cross-validation can also be used to select these random predictors as we did in our random forest model.
+
   
 ```{r models - random forest default}
 # Fit random forest model
