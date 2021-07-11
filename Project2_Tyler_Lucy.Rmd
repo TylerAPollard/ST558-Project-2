@@ -6,7 +6,7 @@ output:
    toc: true
    toc_depth: 3
 params: 
-      weekday: saturday
+      weekday: tuesday
 ---
 
 ```{r setup, include=FALSE}
@@ -57,6 +57,36 @@ day.data$weekday <- factor(day.data$weekday)
 levels(day.data$weekday) <- list(monday = 1, tuesday = 2, wednesday = 3, thursday = 4, friday = 5, saturday = 6, sunday = 0)
 day.data$workingday <- factor(day.data$workingday)
 day.data$weathersit <- factor(day.data$weathersit)
+```
+
+```{r data - unnormalize variables}
+# Temp Unnormal
+temp.tmin = -8
+temp.tmax = 39
+hour.data$temp.unnormal <- hour.data$temp*(temp.tmax - temp.tmin) + temp.tmin # Unnormalize temp
+hour.data$temp.F <- hour.data$temp.unnormal*(9/5) + 32 # Convert to Farenheit
+day.data$temp.unnormal <- hour.data %>% group_by(dteday) %>% summarise(mean = mean(temp.unnormal)) %>% select(mean)
+day.data$temp.unnormal <- day.data$temp.unnormal[[1]]
+day.data$temp.F <- hour.data %>% group_by(dteday) %>% summarise(mean = mean(temp.F)) %>% select(mean)
+day.data$temp.F <- day.data$temp.F[[1]]
+
+# Atemp Unnoraml
+atemp.tmin = -16
+atemp.tmax = 50
+hour.data$atemp.unnormal <- hour.data$atemp*(atemp.tmax - atemp.tmin) + atemp.tmin # Unnormalize atemps
+hour.data$atemp.F <- hour.data$atemp.unnormal*(9/5) + 32 # Convert to farenheit
+day.data$atemp.unnormal <- hour.data %>% group_by(dteday) %>% summarise(mean = mean(atemp.unnormal)) %>% select(mean)
+day.data$atemp.unnormal <- day.data$atemp.unnormal[[1]]
+day.data$atemp.F <- hour.data %>% group_by(dteday) %>% summarise(mean = mean(atemp.F)) %>% select(mean)
+day.data$atemp.F <- day.data$atemp.F[[1]]
+
+# Humidity Unnormal
+day.data$hum.unnormal <- day.data$hum * 100
+hour.data$hum.unnormal <- hour.data$hum * 100
+
+# Windspeed Unnormal
+day.data$windspeed.unnormal <- day.data$windspeed * 67
+hour.data$windspeed.unnormal <- hour.data$windspeed * 67
 ```
 
 ```{r data - create total data}
@@ -120,11 +150,7 @@ kable(table(day.training.data$workingday, cut(day.training.data$casual, breaks =
 ## Summary Tables
 ### Adjusted Temperature
 ```{r summary table - atemp}
-tmin = -16
-tmax = 50
-day.training.data$atemp.unnormal <- day.training.data$atemp*(tmax - tmin) + tmin # Unnormalize temps
-day.training.data$atemp.F <- day.training.data$atemp.unnormal*(9/5) + 32 # Convert to farenheit
-atemp.summary <- day.training.data %>% group_by(yr) %>% summarise(mean = mean(atemp.F), sd = sd(atemp.F), min = min(atemp.F), Q1 = quantile(atemp.F,0.25), median = median(atemp.F), Q3 = quantile(atemp.F, 0.75), max = max(atemp.F))
+atemp.summary <- hour.training.data %>% group_by(yr) %>% summarise(mean = mean(atemp.F), sd = sd(atemp.F), min = min(atemp.F), Q1 = quantile(atemp.F,0.25), median = median(atemp.F), Q3 = quantile(atemp.F, 0.75), max = max(atemp.F))
 kable(atemp.summary, digits = 2)
 ```
 
@@ -179,7 +205,7 @@ ggplot(hour.training.data, aes(x = casual)) +
 
 ## Boxplots
 ### Adjusted Temperature Over the Year
-```{r boxplot- adjusted temperature}
+```{r boxplot- adjusted temperature, fig.width = 8}
 atemp.boxplot.df <- day.training.data
 levels(atemp.boxplot.df$mnth) <- list(January = 1, February = 2, March = 3, April = 4, May = 5, June = 6, July = 7, August = 8, September = 9, October = 10, November = 11, December = 12)
 ggplot(data = atemp.boxplot.df, aes(x = mnth, y = atemp.F)) + 
@@ -201,12 +227,6 @@ ggplot(hour.training.data, aes(x = hr, y = cnt)) +
 ```
 
 ## Scatter Plots
-### Adjusted Temperature Drivers
-```{r scatter - atemp vs temp}
-ggplot(data = day.training.data, aes(x = temp, y = atemp)) + geom_point() + geom_smooth(method = "lm") + 
-  labs(title = "Adjusted Temperature vs Temperature", x = "Temperature", y = "Adjusted Temperature")
-```
-
 ### Count vs Casual by Season
 ```{r scatter - registered vs count}
 ggplot(data = day.training.data, aes(x = cnt, y = casual)) +
@@ -291,21 +311,21 @@ get.data <- function(weekday, ...){
 hour.training.data2 <- get.data(params$weekday)
 
 # aic using only 1st ordered terms
-fit.aic <- step((lm(cnt ~ ., data = hour.training.data2)), direction = "both")
+fit.aic <- step((lm(cnt ~ ., data = hour.training.data2, verbose = FALSE)), direction = "both")
 
 # aic including squared terms and interactions
-fit.aic2 <- step((lm(cnt ~ .^2 + I(temp^2) + I(atemp^2) + I(hum^2) + I(windspeed^2), data = hour.training.data2)), direction = "both")
+fit.aic2 <- step((lm(cnt ~ .^2 + I(temp^2) + I(atemp^2) + I(hum^2) + I(windspeed^2), data = hour.training.data2, verbose = FALSE)), direction = "both")
+
+# aic using 1st order and interactions
+fit.aic3 <- step((lm(cnt ~.^2, data = hour.training.data2, verbose = FALSE)), direction = "both")
 ```  
 
-### Linear Regression Model (tyler)
-
-### Linear Regression Model (lucy)
-#### Modeling using AIC picked predictors
+### Modeling using AIC picked predictors
 ```{r}
 # use all predictors except atemp and holiday
 set.seed(7)
 fit.mlr0 <- train(cnt ~ season + yr + mnth + hr + workingday + weathersit + temp + hum + windspeed,
-                  data = hour.training.data2,
+                  data = hour.training.data,
                   method = "lm",
                   trControl = trainControl(method = "cv", number = 10))
 fit.mlr0
@@ -329,11 +349,71 @@ fit.mlr2 <- train(fit.aic2$terms,
                   trControl = trainControl(method = "cv", number = 10))
 fit.mlr2
 predict.mlr2 <- postResample(predict(fit.mlr2, newdata = hour.test.data), obs = hour.test.data$cnt)
+
+# use aic predictors (1st order and interactions)
+set.seed(7)
+fit.mlr3 <- train(fit.aic3$terms,
+                  data = hour.training.data2,
+                  method = "lm",
+                  trControl = trainControl(method = "cv", number = 10))
+fit.mlr3
+predict.mlr3 <- postResample(predict(fit.mlr3, newdata = hour.test.data), obs = hour.test.data$cnt)
 ```
 
+### Linear Regression Model (tyler)
+```{r models - linear regression 1}
+set.seed(7)
+# fit linear regression model
+fit.lm1 <- train(fit.aic$terms,
+                  data = hour.training.data2,
+                  method = "lm",
+                  trControl = trainControl(method = "cv", number = 10))
+fit.lm1
+
+# Predict test count on test data
+predict.lm1 <- predict(fit.lm1, newdata = hour.test.data)
+
+# Determine performance of linear model fit on test data
+performance.lm1 <- postResample(predict.lm1, obs = hour.test.data$cnt)
+performance.lm1
+```
+
+### Linear Regression Model (lucy)
 
 ## Ensemble Tree Model
 ### Random Forest Model (tyler)
+```{r models - random forest trial}
+set.seed(7)
+
+# Fit random forest model
+fit.random.forest.trial <- train(fit.aic$terms,
+                           data = hour.training.data2,
+                           method = "rf",
+                           trControl = trainControl(method = "cv", number = 10),
+                           verbose = FALSE)
+fit.random.forest.trial
+```
+
+```{r models - random forest}
+set.seed(7)
+
+# Fit random forest model
+# fit.random.forest <- train(fit.aic$terms,
+#                            data = hour.training.data2,
+#                            method = "rf",
+#                            trControl = trainControl(method = "cv", number = 10),
+#                            verbose = FALSE,
+#                            tuneGrid = data.frame(mtry = seq(10, 30, by = 2)))
+# fit.random.forest
+
+# Predict count on test data using random forest fit midel
+predict.rf <- predict(fit.random.forest.trial, newdata = hour.test.data)
+
+# Examine performance of random forest model on the test data
+performance.rf <- postResample(predict.rf, obs = hour.test.data$cnt)
+performance.rf
+```
+
 
 ### Boosted Tree Model (lucy)
 The boosted tree model is a type of tree based method where we grow our trees in a sequential manner, each tree we create will be based off the previous tree so we can update our prediction as we go. For example, we'd fit our model and get a prediction, then create a new model based off the previous, update the prediction on this new model, and we'd repeat this process until we decide to stop. Boosted tree model slowly trains the trees to ensure we don't overfit to our training data. How this is actually done is we create new residuals based off `observed - new predictions`, fit a tree to those residuals to get new predictions $\hat{y}$, then update our predictions again by a scaled down version of the new predictions $\lambda \hat{y}^{b}$ (here $\lambda$ is the growth rate tuning parameter, which keeps us from growing our predictions too quickly). We repeat this process a total of `B` times. We can use cross validation to select what $\lambda$, `d` and `B` should be. Formula used to update predictions is $\hat{y} = \hat{y} + \lambda \hat{y}^{b}$.
@@ -347,6 +427,7 @@ fit.boosted.trial <- train(fit.aic$terms,
                      verbose = FALSE)
 fit.boosted.trial
 ```
+
 ```{r}
 set.seed(7)
 fit.boosted <- train(fit.aic$terms,
@@ -368,11 +449,22 @@ predict.boosted <- postResample(predict(fit.boosted, newdata = hour.test.data), 
 compare.rmse <- data.frame(predict.mlr0, 
                            predict.mlr1,
                            predict.mlr2,
+                           predict.mlr3,
+                           performance.lm1,
+                           performance.rf,
                            predict.boosted)
-colnames(compare.rmse) <- c("predict.mlr0", "predict.mlr1", "predict.mlr2", "predict.boosted")
+colnames(compare.rmse) <- c("predict.mlr0", "predict.mlr1", "predict.mlr2", "predict.mlr3", "perofrmance.lm1", "performance.rf", "predict.boosted")
 compare.rmse
 ```
+
 ```{r}
-apply(compare.rmse["RMSE",], 1, FUN=min)
+min.compare.rmse <- min(compare.rmse["RMSE",])
+min.test <- compare.rmse["RMSE",] == min.compare.rmse
+colnames(compare.rmse)[min.test]
 ```
+
+
+
+
+
 
