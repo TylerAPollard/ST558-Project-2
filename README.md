@@ -3,13 +3,13 @@ The purpose of this repo is we will be using 6 models (4 linear regression, 1 ra
 
 # List of R Packages Used
 ```
-library(tidyverse)\
-library(dplyr)\
-library(knitr)\
-library(ggplot2)\
-library(caret)\
-library(gridExtra)\
-library(corrplot)\
+library(tidyverse)
+library(dplyr)
+library(knitr)
+library(ggplot2)
+library(caret)
+library(gridExtra)
+library(corrplot)
 library(GGally)
 ```
 
